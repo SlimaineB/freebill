@@ -1,0 +1,37 @@
+# Fichiers de compilation Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Dossiers virtuels Python
+venv/
+env/
+*.venv
+*.env
+
+# Fichiers de logs
+logs/
+*.log
+
+# Paramètres de l'éditeur
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Configurations système
+.DS_Store
+Thumbs.db
+
+# Dépendances installées
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Fichiers sensibles
+.env
+config.json
+secrets.json
+
+# Fichiers spécifiques à Streamlit
+.streamlit/
