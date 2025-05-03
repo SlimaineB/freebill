@@ -36,7 +36,7 @@ class ClientService:
 
 # Exemple d'utilisation
 if __name__ == "__main__":
-    manager = ClientManager()
+    manager = ClientService()
     manager.add_client("Jean Dupont", "75 Rue des Lilas, Paris", "12345678901234", "FR12345678901")
     manager.add_client("Sophie Martin", "18 Avenue de Lyon, Lyon", "98765432109876", "FR98765432109")
     manager.delete_client(1)  # Suppression du client avec ID 1
