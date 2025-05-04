@@ -13,15 +13,15 @@ def generate_pdf(client, date, lignes, total_ht, total_tva, total_ttc, facture_n
     # Affichage du logo
     if config["logo"]:
         logo = ImageReader(config["logo"])
-        c.drawImage(logo, 50, 760, width=100, height=50)
+        c.drawImage(logo, 50, 750, width=100, height=50)  # ✅ Descendre légèrement le logo
 
     # Infos entreprise
     c.setFont("Helvetica-Bold", 14)
-    c.drawString(180, 780, config["nom"])
+    c.drawString(180, 770, config["nom"])  # ✅ Réserver plus d’espace en baissant la zone entreprise
     c.setFont("Helvetica", 12)
-    c.drawString(180, 760, config["adresse"])
-    c.drawString(180, 740, f"Tél : {config['telephone']} | Email : {config['email']}")
-    c.drawString(180, 720, f"SIRET : {config['siret']} | TVA : {config['tva']}")
+    c.drawString(180, 750, config["adresse"])
+    c.drawString(180, 730, f"Tél : {config['telephone']} | Email : {config['email']}")
+    c.drawString(180, 710, f"SIRET : {config['siret']} | TVA : {config['tva']}")
 
     # Infos facture
     c.setFont("Helvetica-Bold", 16)
@@ -29,6 +29,13 @@ def generate_pdf(client, date, lignes, total_ht, total_tva, total_ttc, facture_n
     c.setFont("Helvetica", 12)
     c.drawString(50, 660, f"Client : {client}")
     c.drawString(50, 640, f"Date : {date}")
+
+    # Ajuster la position du tableau dynamiquement
+    y_start_table = 600 - (len(lignes) * 10)  # ✅ Calcul dynamique en fonction du nombre de lignes
+
+    if y_start_table < 400:  # ✅ Si trop bas, nouvelle page
+        c.showPage()  # ✅ Crée une nouvelle page
+        y_start_table = 650  # ✅ Repositionne le tableau plus haut
 
     # Tableau des lignes
     data = [["Description", "Quantité", "Montant Unitaire (€)", "TVA (%)", "Total TTC (€)"]]
@@ -43,20 +50,25 @@ def generate_pdf(client, date, lignes, total_ht, total_tva, total_ttc, facture_n
         ('GRID', (0, 0), (-1, -1), 1, colors.black),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSize', (0, 0), (-1, -1), 10)  # ✅ Réduction légère de la taille du texte pour économiser de l’espace
     ]))
 
-    table.wrapOn(c, 50, 600)
-    table.drawOn(c, 50, 570)
+    table.wrapOn(c, 50, y_start_table)
+    table.drawOn(c, 50, y_start_table - 30)  # ✅ Descendre le tableau de 30 pixels pour éviter l'écrasement
 
     # Totaux
-    y = 500
+    y_total = y_start_table - (len(lignes) * 15) - 50  # ✅ Ajuster la position des totaux dynamiquement
+    if y_total < 200:  # ✅ Si trop bas, on crée une nouvelle page
+        c.showPage()
+        y_total = 650
+
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(400, y, f"Total HT : {total_ht:.2f} €")
-    c.drawString(400, y-20, f"Total TVA : {total_tva:.2f} €")
-    c.drawString(400, y-40, f"Total TTC : {total_ttc:.2f} €")
+    c.drawString(400, y_total, f"Total HT : {total_ht:.2f} €")
+    c.drawString(400, y_total - 20, f"Total TVA : {total_tva:.2f} €")
+    c.drawString(400, y_total - 40, f"Total TTC : {total_ttc:.2f} €")
 
     # RIB
-    c.drawString(50, y-80, f"⚡ Paiement : {config['rib']}")
+    c.drawString(50, y_total - 80, f"⚡ Paiement : {config['rib']}")
 
     # Sauvegarde du PDF
     c.save()

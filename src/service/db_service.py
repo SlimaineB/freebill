@@ -1,5 +1,7 @@
 import sqlite3
-from service.db_setup import DB_FILE
+
+DB_FILE = "gestion_factures.db"
+
 
 def init_db():
     """Crée la table entreprise si elle n'existe pas."""
@@ -20,6 +22,42 @@ def init_db():
     )
     """)
     
+
+    # Table Clients
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS clients (
+        id INTEGER PRIMARY KEY,
+        nom TEXT,
+        adresse TEXT,
+        telephone TEXT,
+        email TEXT
+    )
+    """)
+
+    # Table Fournisseurs
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS fournisseurs (
+        id INTEGER PRIMARY KEY,
+        nom TEXT,
+        adresse TEXT,
+        telephone TEXT,
+        email TEXT
+    )
+    """)
+
+    # Table Factures
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS factures (
+        id INTEGER PRIMARY KEY,
+        client_id INTEGER,
+        date TEXT,
+        total_ht REAL,
+        total_tva REAL,
+        total_ttc REAL,
+        FOREIGN KEY (client_id) REFERENCES clients(id)
+    )
+    """)
+
     conn.commit()
     conn.close()
 
