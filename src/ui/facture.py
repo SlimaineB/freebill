@@ -4,6 +4,18 @@ from service import db_service
 from service.export_service import generate_pdf  # Import de la fonction d’export PDF
 
 def show():
+
+    tab1, tab2 = st.tabs(["💰 Nouvelle Facture", "🔍 Recherche Factures"])
+
+    with tab1:
+        new_facture()  # Ta fonction de création de factures
+
+    with tab2:
+        search_factures()  # Fonction de recherche des factu
+
+
+def new_facture():
+
     st.header("🧾 Gestion des Factures")
     print(db_service.get_clients())
     # Initialisation des données
@@ -63,6 +75,51 @@ def show():
             db_service.add_facture(client["id"] , date_facture, total_ht, total_tva, total_ttc)
             st.success("✅ Facture enregistrée avec succès !")
 
-        if st.button("Exporter en PDF"):
+        if st.button("Exporter en PDF", key="export_pdf_one"):
             generate_pdf(client_selection, date_facture, st.session_state["ligne_factures"], total_ht, total_tva, total_ttc, facture_num)
             st.success("📄 Facture exportée en PDF avec succès !")
+
+
+
+
+def search_factures():
+    st.header("🔍 Recherche de Factures")
+
+    # Récupération des données depuis la base de données
+    factures = db_service.get_factures()
+
+    # Vérifier si des factures existent
+    if not factures:
+        st.warning("⚠️ Aucune facture trouvée.")
+        return
+
+    # Sélection du client pour filtrer
+    clients = list(set(facture["nom"] for facture in factures))
+    client_filter = st.selectbox("Sélectionner un client", ["Tous"] + clients)
+
+    # Sélection de la date pour filtrer
+    date_filter = st.date_input("📅 Filtrer par date (optionnel)")
+
+    # Application des filtres
+    filtered_factures = factures
+    if client_filter != "Tous":
+        filtered_factures = [facture for facture in filtered_factures if facture["nom"] == client_filter]
+    if date_filter:
+        filtered_factures = [facture for facture in filtered_factures if facture["date"] == date_filter.strftime("%Y-%m-%d")]
+
+    # Affichage des factures filtrées
+    st.subheader("📝 Résultats de recherche")
+    if filtered_factures:
+        df_factures = pd.DataFrame(filtered_factures)
+        st.table(df_factures)
+    else:
+        st.warning("⚠️ Aucune facture trouvée pour ce filtre.")
+
+    # Export PDF de la facture sélectionnée
+    facture_selection = st.selectbox("📄 Sélectionner une facture à exporter", [f"{facture['id']} - {facture['nom']} ({facture['date']})" for facture in filtered_factures])
+    if st.button("Exporter en PDF", key="export_pdf_all"):
+        facture_id = int(facture_selection.split(" - ")[0])  # Récupérer l'ID de la facture
+        facture_details = next(facture for facture in factures if facture["id"] == facture_id)
+        generate_pdf(facture_details["nom"], facture_details["date"], [], facture_details["total_ht"], facture_details["total_tva"], facture_details["total_ttc"], facture_id)
+        st.success("✅ Facture exportée en PDF avec succès !")
+
