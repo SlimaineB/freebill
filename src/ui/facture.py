@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
+from service import db_service
 from service.export_service import generate_pdf  # Import de la fonction d’export PDF
 
 def show():
     st.header("🧾 Gestion des Factures")
-
+    print(db_service.get_clients())
     # Initialisation des données
     if "factures_data" not in st.session_state:
         st.session_state["factures_data"] = pd.DataFrame(columns=["ID", "Date", "Client", "Total HT", "TVA", "Total TTC"])
@@ -13,10 +14,10 @@ def show():
         st.session_state["ligne_factures"] = []
 
     date_facture = st.date_input("📅 Date")
-
+ 
     # Sélection du client
-    if "config_data" in st.session_state and not st.session_state["config_data"].empty:
-        client_selection = st.selectbox("Sélectionner un client", st.session_state["config_data"]["Nom"])
+    if len(db_service.get_clients()) > 0:
+        client_selection = st.selectbox("Sélectionner un client", [client["nom"] for client in db_service.get_clients()])
     else:
         st.warning("⚠️ Aucun client enregistré. Ajoutez-en dans l'onglet Configuration.")
         client_selection = None
@@ -54,9 +55,12 @@ def show():
         st.write(f"**Total TTC :** {total_ttc:.2f} €")
 
         if st.button("Enregistrer Facture"):
+            client = db_service.get_client_by_name(client_selection)[0]
             new_id = len(st.session_state["factures_data"]) + 1
             new_facture = {"ID": new_id, "Date": date_facture, "Client": client_selection, "Total HT": total_ht, "TVA": total_tva, "Total TTC": total_ttc}
             st.session_state["factures_data"] = pd.concat([st.session_state["factures_data"], pd.DataFrame([new_facture])], ignore_index=True)
+
+            db_service.add_facture(client["id"] , date_facture, total_ht, total_tva, total_ttc)
             st.success("✅ Facture enregistrée avec succès !")
 
         if st.button("Exporter en PDF"):

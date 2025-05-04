@@ -1,8 +1,12 @@
 import streamlit as st
+from service import db_service
 from ui import frais
-import ui.config as config
+import ui.config_generale as config_generale
 import ui.config_entreprise as config_entreprise  # ✅ Correction ici
 import ui.facture as facture
+
+# Initialiser la BDD
+db_service.init_db()
 
 # Chargement du logo
 st.sidebar.title("📊 Tableau de bord")
@@ -12,7 +16,7 @@ option = st.sidebar.radio("📌 Navigation", ["🏢 Configuration Générale", "
 
 # Redirection vers les pages correspondantes
 if option == "🏢 Configuration Générale":
-    config.show()
+    config_generale.show()
 elif option == "🏢 Configuration Entreprise":
     config_entreprise.show()
 elif option == "🧾 Factures":

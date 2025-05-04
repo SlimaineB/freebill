@@ -4,8 +4,7 @@ from service import db_service
 def show():
     st.header("🏢 Configuration de l'Entreprise")
 
-    # Initialiser la BDD
-    db_service.init_db()
+
 
     # Charger les infos actuelles
     config = db_service.get_entreprise_info() or {

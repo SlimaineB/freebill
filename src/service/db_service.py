@@ -92,10 +92,10 @@ def save_entreprise_info(data):
     if get_entreprise_info():
         cursor.execute("""
         UPDATE entreprise SET 
-            nom = ?, adresse = ?, telephone = ?, email = ?, 
-            siret = ?, tva = ?, rib = ?, logo = ? WHERE id = 1
-        """, (data["nom"], data["adresse"], data["telephone"], data["email"], 
-              data["siret"], data["tva"], data["rib"], data["logo"]))
+             adresse = ?, telephone = ?, email = ?, 
+            siret = ?, tva = ?, rib = ?, logo = ? WHERE nom = ?
+        """, ( data["adresse"], data["telephone"], data["email"], 
+              data["siret"], data["tva"], data["rib"], data["logo"],data["nom"]))
     else:
         cursor.execute("""
         INSERT INTO entreprise (nom, adresse, telephone, email, siret, tva, rib, logo) 
@@ -117,34 +117,115 @@ def reset_entreprise_info():
 
 # Gestion des clients
 def add_client(nom, adresse, telephone, email):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO clients (nom, adresse, telephone, email) VALUES (?, ?, ?, ?)", 
-                   (nom, adresse, telephone, email))
-    conn.commit()
-    conn.close()
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO clients (nom, adresse, telephone, email) VALUES (?, ?, ?, ?)", 
+                           (nom, adresse, telephone, email))
+            return cursor.lastrowid  # Retourner l'ID du client ajouté
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return None
+    
 
 def get_clients():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM clients")
-    result = cursor.fetchall()
-    conn.close()
-    return result
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row  # Permet d'accéder aux résultats comme des dictionnaires
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM clients")
+            return [dict(row) for row in cursor.fetchall()]  # Convertir en liste de dictionnaires
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return []
 
+def get_client_by_name(nom):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row  # Permet d'accéder aux résultats comme des dictionnaires
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM clients where nom = ?", (nom,))
+            return [dict(row) for row in cursor.fetchall()]  # Convertir en liste de dictionnaires
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return []
+    
 # Gestion des fournisseurs
 def add_fournisseur(nom, adresse, telephone, email):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO fournisseurs (nom, adresse, telephone, email) VALUES (?, ?, ?, ?)", 
+                           (nom, adresse, telephone, email))
+            return cursor.lastrowid  # Retourner l'ID du fournisseur ajouté
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return None
+
+def get_fournisseurs():
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM fournisseurs")
+            return [dict(row) for row in cursor.fetchall()]
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return []
+
+
+def get_all_clients_fournisseurs():
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+
+            # Récupérer les clients
+            cursor.execute("SELECT id, nom, adresse, telephone, email FROM clients")
+            clients = [{"ID": row[0], "Nom": row[1], "Adresse": row[2], "Téléphone": row[3], "Email": row[4], "Type": "Client"} for row in cursor.fetchall()]
+
+            # Récupérer les fournisseurs
+            cursor.execute("SELECT id, nom, adresse, telephone, email FROM fournisseurs")
+            fournisseurs = [{"ID": row[0], "Nom": row[1], "Adresse": row[2], "Téléphone": row[3], "Email": row[4], "Type": "Fournisseur"} for row in cursor.fetchall()]
+
+        return clients + fournisseurs  # Fusionner les listes
+    
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return []
+
+
+def add_facture(client_id, date, total_ht, total_tva, total_ttc):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO fournisseurs (nom, adresse, telephone, email) VALUES (?, ?, ?, ?)", 
-                   (nom, adresse, telephone, email))
+    cursor.execute("INSERT INTO factures (client_id, date, total_ht, total_tva, total_ttc) VALUES (?, ?, ?, ?, ?)", 
+                   (client_id, date, total_ht, total_tva, total_ttc))
     conn.commit()
     conn.close()
 
-def get_fournisseurs():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM fournisseurs")
-    result = cursor.fetchall()
-    conn.close()
-    return result
+def get_factures(filter_client=None, filter_date=None):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+
+            query = """
+                SELECT f.id, c.nom, f.date, f.total_ht, f.total_tva, f.total_ttc 
+                FROM factures f 
+                INNER JOIN clients c ON f.client_id = c.id
+            """
+            params = []
+
+            if filter_client:
+                query += " WHERE c.nom LIKE ?"
+                params.append(f"%{filter_client}%")
+
+            if filter_date:
+                query += " AND f.date = ?" if filter_client else " WHERE f.date = ?"
+                params.append(filter_date)
+
+            cursor.execute(query, params)
+            return [dict(row) for row in cursor.fetchall()]
+    
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return []
