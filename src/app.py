@@ -8,8 +8,13 @@ import ui.facture as facture
 # Initialiser la BDD
 db_service.init_db()
 
+#Page size to all available
+st.set_page_config(layout="wide")
+
 # Chargement du logo
 st.sidebar.title("📊 Tableau de bord")
+
+
 
 # Menu latéral structuré
 option = st.sidebar.radio("📌 Navigation", ["🏢 Configuration Générale", "🏢 Configuration Entreprise", "🧾 Factures", "💰 Notes de frais"])
