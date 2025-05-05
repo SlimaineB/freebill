@@ -17,7 +17,7 @@ def show():
 def new_facture():
 
     st.header("🧾 Gestion des Factures")
-    print(db_service.get_clients())
+
     # Initialisation des données
     if "factures_data" not in st.session_state:
         st.session_state["factures_data"] = pd.DataFrame(columns=["ID", "Date", "Client", "Total HT", "TVA", "Total TTC"])
@@ -27,11 +27,21 @@ def new_facture():
 
     date_facture = st.date_input("📅 Date")
  
+    # Sélection de l'entrteprise
+    print(db_service.get_entreprises())
+    print(db_service.get_clients())
+    if len(db_service.get_entreprises()) > 0:
+        entreprise_selection = st.selectbox("Sélectionner votre entreprise", [entreprise["nom"] for entreprise in db_service.get_entreprises()])
+    else:
+        st.warning("⚠️ Aucune entreprise enregistrée. Ajoutez-en dans l'onglet Configuration Entreprise.")
+        entreprise_selection = None
+
+
     # Sélection du client
     if len(db_service.get_clients()) > 0:
         client_selection = st.selectbox("Sélectionner un client", [client["nom"] for client in db_service.get_clients()])
     else:
-        st.warning("⚠️ Aucun client enregistré. Ajoutez-en dans l'onglet Configuration.")
+        st.warning("⚠️ Aucun client enregistré. Ajoutez-en dans l'onglet Configuration Client/Fournisseur.")
         client_selection = None
 
     # Ajout des lignes de factures
@@ -68,15 +78,18 @@ def new_facture():
 
         if st.button("Enregistrer Facture"):
             client = db_service.get_client_by_name(client_selection)[0]
+            entreprise = db_service.get_entreprise_by_name(entreprise_selection)[0]
             new_id = len(st.session_state["factures_data"]) + 1
-            new_facture = {"ID": new_id, "Date": date_facture, "Client": client_selection, "Total HT": total_ht, "TVA": total_tva, "Total TTC": total_ttc}
+            new_facture = {"ID": new_id, "Date": date_facture,"Entreprise": entreprise_selection ,"Client": client_selection, "Total HT": total_ht, "TVA": total_tva, "Total TTC": total_ttc}
             st.session_state["factures_data"] = pd.concat([st.session_state["factures_data"], pd.DataFrame([new_facture])], ignore_index=True)
 
-            db_service.add_facture(client["id"] , date_facture, total_ht, total_tva, total_ttc)
+            db_service.add_facture(entreprise["id"], client["id"] , date_facture, total_ht, total_tva, total_ttc)
             st.success("✅ Facture enregistrée avec succès !")
 
         if st.button("Exporter en PDF", key="export_pdf_one"):
-            generate_pdf(client_selection, date_facture, st.session_state["ligne_factures"], total_ht, total_tva, total_ttc, facture_num)
+            entreprise = db_service.get_entreprise_by_name(entreprise_selection)[0]
+            client = db_service.get_client_by_name(client_selection)[0]
+            generate_pdf(entreprise, client, date_facture, st.session_state["ligne_factures"], total_ht, total_tva, total_ttc, facture_num)
             st.success("📄 Facture exportée en PDF avec succès !")
 
 

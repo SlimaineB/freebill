@@ -4,21 +4,24 @@ DB_FILE = "gestion_factures.db"
 
 
 def init_db():
-    """Crée la table entreprise si elle n'existe pas."""
+    """Crée la table entreprises si elle n'existe pas."""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
+    # ✅ Table Entreprises (mise à jour pour gérer plusieurs entreprises)
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS entreprise (
-        id INTEGER PRIMARY KEY,
-        nom TEXT,
+    CREATE TABLE IF NOT EXISTS entreprises (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nom TEXT UNIQUE,
         adresse TEXT,
         telephone TEXT,
         email TEXT,
         siret TEXT,
         tva TEXT,
         rib TEXT,
-        logo TEXT
+        logo TEXT,
+        tjm REAL DEFAULT 0.0,
+        libelle_court TEXT DEFAULT ""
     )
     """)
     
@@ -49,70 +52,90 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS factures (
         id INTEGER PRIMARY KEY,
+        entreprise_id INTEGER,
         client_id INTEGER,
         date TEXT,
         total_ht REAL,
         total_tva REAL,
         total_ttc REAL,
-        FOREIGN KEY (client_id) REFERENCES clients(id)
+        FOREIGN KEY (client_id) REFERENCES clients(id) , 
+        FOREIGN KEY (entreprise_id) REFERENCES entreprises(id)
     )
     """)
 
+    # Table des Notes de Frais
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS frais (
+        id INTEGER PRIMARY KEY,
+        date DATE,
+        type TEXT,
+        montant_ttc REAL,
+        tva REAL,
+        montant_ht REAL,
+        description TEXT,
+        mode_paiement TEXT,
+        justificatif TEXT
+    )
+    """)
+
+
     conn.commit()
     conn.close()
 
-def get_entreprise_info():
-    """Récupère les informations de l'entreprise."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM entreprise LIMIT 1")
-    result = cursor.fetchone()
-    conn.close()
-    
-    if result:
-        return {
-            "id": result[0],
-            "nom": result[1],
-            "adresse": result[2],
-            "telephone": result[3],
-            "email": result[4],
-            "siret": result[5],
-            "tva": result[6],
-            "rib": result[7],
-            "logo": result[8]
-        }
-    else:
-        return None
+def get_entreprises():
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row  # Permet d'accéder aux résultats comme des dictionnaires
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM entreprises")
+            return [dict(row) for row in cursor.fetchall()]  # Convertir en liste de dictionnaires
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return []
 
-def save_entreprise_info(data):
-    """Sauvegarde ou met à jour les infos de l'entreprise."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    
-    if get_entreprise_info():
-        cursor.execute("""
-        UPDATE entreprise SET 
-             adresse = ?, telephone = ?, email = ?, 
-            siret = ?, tva = ?, rib = ?, logo = ? WHERE nom = ?
-        """, ( data["adresse"], data["telephone"], data["email"], 
-              data["siret"], data["tva"], data["rib"], data["logo"],data["nom"]))
-    else:
-        cursor.execute("""
-        INSERT INTO entreprise (nom, adresse, telephone, email, siret, tva, rib, logo) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (data["nom"], data["adresse"], data["telephone"], data["email"], 
-              data["siret"], data["tva"], data["rib"], data["logo"]))
-    
-    conn.commit()
-    conn.close()
+def get_entreprise_by_name(nom):
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row  # Permet d'accéder aux résultats comme des dictionnaires
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM entreprises where nom = ? LIMIT 1", (nom,))
+            return [dict(row) for row in cursor.fetchall()]  # Convertir en liste de dictionnaires
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return []
 
-def reset_entreprise_info():
-    """Supprime les données et réinitialise la table."""
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM entreprise")
-    conn.commit()
-    conn.close()
+def save_entreprise(data):
+    """Ajoute ou met à jour une entreprise."""
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            if get_entreprise_by_name(data["nom"]):
+                cursor.execute("""
+                UPDATE entreprises SET adresse=?, telephone=?, email=?, siret=?, tva=?, rib=?, logo=?, tjm=?, libelle_court=? 
+                WHERE nom=?
+                """, (data["adresse"], data["telephone"], data["email"], data["siret"], data["tva"], 
+                      data["rib"], data["logo"], data["tjm"], data["libelle_court"], data["nom"]))
+            else:
+                cursor.execute("""
+                INSERT INTO entreprises (nom, adresse, telephone, email, siret, tva, rib, logo, tjm, libelle_court) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (data["nom"], data["adresse"], data["telephone"], data["email"], data["siret"], 
+                      data["tva"], data["rib"], data["logo"], data["tjm"], data["libelle_court"]))
+            conn.commit()
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+
+
+def delete_entreprise(nom):
+    """Supprime une entreprise spécifique."""
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM entreprises WHERE nom = ?", (nom,))
+            conn.commit()
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+
 
 
 # Gestion des clients
@@ -144,7 +167,7 @@ def get_client_by_name(nom):
         with sqlite3.connect(DB_FILE) as conn:
             conn.row_factory = sqlite3.Row  # Permet d'accéder aux résultats comme des dictionnaires
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM clients where nom = ?", (nom,))
+            cursor.execute("SELECT * FROM clients where nom = ? LIMIT 1", (nom,))
             return [dict(row) for row in cursor.fetchall()]  # Convertir en liste de dictionnaires
     except sqlite3.Error as e:
         print(f"Erreur SQLite: {e}")
@@ -194,11 +217,11 @@ def get_all_clients_fournisseurs():
         return []
 
 
-def add_facture(client_id, date, total_ht, total_tva, total_ttc):
+def add_facture(entreprise_id, client_id, date, total_ht, total_tva, total_ttc):
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO factures (client_id, date, total_ht, total_tva, total_ttc) VALUES (?, ?, ?, ?, ?)", 
-                   (client_id, date, total_ht, total_tva, total_ttc))
+    cursor.execute("INSERT INTO factures (entreprise_id, client_id, date, total_ht, total_tva, total_ttc) VALUES (?, ?, ?, ?, ?, ?)", 
+                   (entreprise_id, client_id, date, total_ht, total_tva, total_ttc))
     conn.commit()
     conn.close()
 
@@ -209,9 +232,10 @@ def get_factures(filter_client=None, filter_date=None):
             cursor = conn.cursor()
 
             query = """
-                SELECT f.id, c.nom, f.date, f.total_ht, f.total_tva, f.total_ttc 
+                SELECT f.id, e.nom, c.nom, f.date, f.total_ht, f.total_tva, f.total_ttc 
                 FROM factures f 
                 INNER JOIN clients c ON f.client_id = c.id
+                INNER JOIN entreprises e ON f.entreprise_id = e.id
             """
             params = []
 
@@ -229,3 +253,46 @@ def get_factures(filter_client=None, filter_date=None):
     except sqlite3.Error as e:
         print(f"Erreur SQLite: {e}")
         return []
+
+
+def add_frais(date, type_frais, montant_ttc, tva, montant_ht, description, mode_paiement, justificatif):
+    """Ajoute une note de frais en BDD avec la date en format DATE."""
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            INSERT INTO frais (date, type, montant_ttc, tva, montant_ht, description, mode_paiement, justificatif) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (date, type_frais, montant_ttc, tva, montant_ht, description, mode_paiement, justificatif))
+            return cursor.lastrowid
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return None
+
+
+def get_frais():
+    """Récupère toutes les notes de frais stockées en BDD."""
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            conn.row_factory = sqlite3.Row
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM frais")
+            return [dict(row) for row in cursor.fetchall()]
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")
+        return []
+
+def update_frais(frais_data):
+    """Met à jour les notes de frais sans bidouiller les dates."""
+    try:
+        with sqlite3.connect(DB_FILE) as conn:
+            cursor = conn.cursor()
+            for frais in frais_data:
+                cursor.execute("""
+                UPDATE frais SET date=?, type=?, montant_ttc=?, tva=?, montant_ht=?, 
+                description=?, mode_paiement=?, justificatif=? WHERE id=?
+                """, (frais["date"], frais["type"], frais["montant_ttc"], frais["tva"], frais["montant_ht"],
+                      frais["description"], frais["mode_paiement"], frais["justificatif"], frais["id"]))
+            conn.commit()
+    except sqlite3.Error as e:
+        print(f"Erreur SQLite: {e}")

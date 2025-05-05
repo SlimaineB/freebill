@@ -1,3 +1,4 @@
+import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
@@ -5,29 +6,29 @@ from reportlab.lib.utils import ImageReader
 from reportlab.platypus import Table, TableStyle
 import service.db_service as db_service
 
-def generate_pdf(client, date, lignes, total_ht, total_tva, total_ttc, facture_num):
-    config = db_service.get_entreprise_info()
+def generate_pdf(entreprise, client, date, lignes, total_ht, total_tva, total_ttc, facture_num):
+    
     filename = f"facture_{facture_num}.pdf"
     c = canvas.Canvas(filename, pagesize=A4)
 
     # Affichage du logo
-    if config["logo"]:
-        logo = ImageReader(config["logo"])
+    if entreprise["logo"] and os.path.exists(entreprise["logo"]):
+        logo = ImageReader(entreprise["logo"])
         c.drawImage(logo, 50, 750, width=100, height=50)  # ✅ Descendre légèrement le logo
 
     # Infos entreprise
     c.setFont("Helvetica-Bold", 14)
-    c.drawString(180, 770, config["nom"])  # ✅ Réserver plus d’espace en baissant la zone entreprise
+    c.drawString(180, 770, entreprise["nom"])  # ✅ Réserver plus d’espace en baissant la zone entreprise
     c.setFont("Helvetica", 12)
-    c.drawString(180, 750, config["adresse"])
-    c.drawString(180, 730, f"Tél : {config['telephone']} | Email : {config['email']}")
-    c.drawString(180, 710, f"SIRET : {config['siret']} | TVA : {config['tva']}")
+    c.drawString(180, 750, entreprise["adresse"])
+    c.drawString(180, 730, f"Tél : {entreprise['telephone']} | Email : {entreprise['email']}")
+    c.drawString(180, 710, f"SIRET : {entreprise['siret']} | TVA : {entreprise['tva']}")
 
     # Infos facture
     c.setFont("Helvetica-Bold", 16)
     c.drawString(50, 680, f"Facture N° {facture_num}")
     c.setFont("Helvetica", 12)
-    c.drawString(50, 660, f"Client : {client}")
+    c.drawString(50, 660, f"Client : {client['nom']}")
     c.drawString(50, 640, f"Date : {date}")
 
     # Ajuster la position du tableau dynamiquement
@@ -68,7 +69,7 @@ def generate_pdf(client, date, lignes, total_ht, total_tva, total_ttc, facture_n
     c.drawString(400, y_total - 40, f"Total TTC : {total_ttc:.2f} €")
 
     # RIB
-    c.drawString(50, y_total - 80, f"⚡ Paiement : {config['rib']}")
+    c.drawString(50, y_total - 80, f"⚡ Paiement : {entreprise['rib']}")
 
     # Sauvegarde du PDF
     c.save()
