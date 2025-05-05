@@ -232,7 +232,7 @@ def get_factures(filter_client=None, filter_date=None):
             cursor = conn.cursor()
 
             query = """
-                SELECT f.id, e.nom, c.nom, f.date, f.total_ht, f.total_tva, f.total_ttc 
+                SELECT f.id, e.nom as nom_entreprise, c.nom as nom_client, f.date, f.total_ht, f.total_tva, f.total_ttc 
                 FROM factures f 
                 INNER JOIN clients c ON f.client_id = c.id
                 INNER JOIN entreprises e ON f.entreprise_id = e.id

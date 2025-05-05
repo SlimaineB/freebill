@@ -107,7 +107,7 @@ def search_factures():
         return
 
     # Sélection du client pour filtrer
-    clients = list(set(facture["nom"] for facture in factures))
+    clients = list(set(facture["nom_client"] for facture in factures))
     client_filter = st.selectbox("Sélectionner un client", ["Tous"] + clients)
 
     # Sélection de la date pour filtrer
@@ -116,7 +116,7 @@ def search_factures():
     # Application des filtres
     filtered_factures = factures
     if client_filter != "Tous":
-        filtered_factures = [facture for facture in filtered_factures if facture["nom"] == client_filter]
+        filtered_factures = [facture for facture in filtered_factures if facture["nom_client"] == client_filter]
     if date_filter:
         filtered_factures = [facture for facture in filtered_factures if facture["date"] == date_filter.strftime("%Y-%m-%d")]
 
@@ -129,10 +129,12 @@ def search_factures():
         st.warning("⚠️ Aucune facture trouvée pour ce filtre.")
 
     # Export PDF de la facture sélectionnée
-    facture_selection = st.selectbox("📄 Sélectionner une facture à exporter", [f"{facture['id']} - {facture['nom']} ({facture['date']})" for facture in filtered_factures])
+    facture_selection = st.selectbox("📄 Sélectionner une facture à exporter", [f"{facture['id']} - {facture['nom_entreprise']}/{facture['nom_client']} ({facture['date']})" for facture in filtered_factures])
     if st.button("Exporter en PDF", key="export_pdf_all"):
         facture_id = int(facture_selection.split(" - ")[0])  # Récupérer l'ID de la facture
         facture_details = next(facture for facture in factures if facture["id"] == facture_id)
-        generate_pdf(facture_details["nom"], facture_details["date"], [], facture_details["total_ht"], facture_details["total_tva"], facture_details["total_ttc"], facture_id)
+        entreprise = db_service.get_entreprise_by_name(facture_details["nom_entreprise"])[0]
+        client = db_service.get_client_by_name(facture_details["nom_client"])[0]
+        generate_pdf(entreprise,client, facture_details["date"], [], facture_details["total_ht"], facture_details["total_tva"], facture_details["total_ttc"], facture_id)
         st.success("✅ Facture exportée en PDF avec succès !")
 
